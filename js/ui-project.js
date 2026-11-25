@@ -74,6 +74,7 @@ export function renderProject(container, state, changed) {
   add(h("p", {}, "Project name: ", input(prj.name, (v) => { prj.name = v; changed(); }, { size: 40 }), ` · Variant: ${prj.variant}`));
 
   // --- Packs
+  if (!prj.packs.length) add(h("p", { class: "bad" }, `No packs: the library has no pack templates for ${prj.variant}. Load a library that has "packTemplates", then create the project again.`));
   const count = (id) => prj.wires.filter((w) => w.pack === id).length;
   add(h("h3", {}, "Packs"),
     table(["Pack", "Role", "Drawing number", "Rev", "Wire range", "Wires"], prj.packs.map((p) => [
