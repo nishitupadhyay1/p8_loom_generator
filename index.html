@@ -10,19 +10,20 @@
   <header class="bar">
     <h1>P8 Loom Generator</h1>
     <span id="version" class="muted"></span>
+    <span id="step" class="muted"></span>
   </header>
 
   <main>
     <section class="card">
-      <h2>Status</h2>
-      <p id="step"></p>
-      <ul id="checks"></ul>
-    </section>
-
-    <section class="card">
-      <h2>Data</h2>
-      <p>This site holds no Dynaflow data. The component library and project files stay on your computer or the Dynaflow Drive and are loaded into the browser only.</p>
-      <p>Dummy examples: <a href="samples/sample-library.json">sample library</a> · <a href="samples/sample-project.json">sample project</a></p>
+      <h2>Component library</h2>
+      <p class="muted">Load the library JSON from the Dynaflow Drive. It is read in this browser only and never uploaded.</p>
+      <div class="actions">
+        <label class="button">Load library file…
+          <input id="library-file" type="file" accept=".json,application/json" hidden>
+        </label>
+        <button id="library-sample" type="button">Load dummy sample</button>
+      </div>
+      <div id="library-view"></div>
     </section>
   </main>
 

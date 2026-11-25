@@ -11,7 +11,10 @@
     ],
     "terminationStraight": { "maxSize": 1.0, "length": 35 },
     "maxWiresPerTerminal": 2,
-    "blockedColours": ["YE", "GN", "GN/YE"]
+    "blockedColours": ["YE", "GN", "GN/YE"],
+    "sizeRule": {
+      "DEMO": { "default": 0.5, "notes": "Invented rule", "source": "Dummy" }
+    }
   },
   "colours": [
     { "code": "RD", "name": "Red", "screen": "#c62828" },
@@ -19,7 +22,8 @@
     { "code": "GY", "name": "Grey", "screen": "#9e9e9e" }
   ],
   "wireTypes": [
-    { "size": 0.5, "stranding": "16/0.20", "od": null, "ferruleOd": null, "unconfirmed": ["od", "ferruleOd"] }
+    { "id": "0.5", "kind": "single", "size": 0.5, "stranding": "16/0.20", "od": null, "ferruleOd": null, "stock": ["RD", "WE"], "source": "Dummy" },
+    { "id": "DEMO-CABLE", "kind": "cable", "cores": 4, "od": 6.0, "bend": { "stationary": 30, "flexible": 75 }, "terminationStraight": 50, "unconfirmed": ["od"], "source": "Dummy" }
   ],
   "components": [
     {
@@ -35,10 +39,11 @@
           "id": "X1", "mark": "", "pitch": 5.0,
           "accepts": { "min": 0.2, "max": 2.5 },
           "twin": { "allowed": true, "minEach": 0.5, "maxEach": 1.5 },
-          "voltageClass": "ELV",
+          "strip": 7, "torque": { "min": 0.5, "max": 0.6 },
+          "termination": "ferrule", "voltageClass": "ELV", "source": "Invented",
           "terminals": [
-            { "id": "1", "name": "+V", "mark": "1 +V", "pos": { "x": 10, "y": 5, "z": 40 }, "exit": { "x": 0, "y": -1, "z": 0 }, "bms": false },
-            { "id": "2", "name": "-V", "mark": "2 -V", "pos": { "x": 15, "y": 5, "z": 40 }, "exit": { "x": 0, "y": -1, "z": 0 }, "bms": false }
+            { "id": "1", "name": "+V", "mark": "1 +V", "pos": { "x": 10, "y": 5, "z": 40 }, "exit": { "x": 0, "y": -1, "z": 0 } },
+            { "id": "2", "name": "-V", "mark": "2 -V", "pos": { "x": 15, "y": 5, "z": 40 }, "exit": { "x": 0, "y": -1, "z": 0 } }
           ]
         }
       ]
@@ -51,16 +56,49 @@
       "envelope": { "l": null, "w": null, "h": null },
       "mounting": "DIN",
       "source": "Invented",
-      "unconfirmed": ["envelope"],
       "connectors": [
         {
           "id": "CN1", "mark": "CN1", "pitch": 3.5,
           "accepts": { "min": 0.14, "max": 1.5 },
           "twin": { "allowed": true, "maxEach": 0.5 },
-          "voltageClass": "ELV",
+          "termination": "ferrule", "voltageClass": "ELV", "source": "Invented",
           "terminals": [
-            { "id": "+", "name": "+", "mark": "+", "pos": null, "exit": null, "bms": false, "unconfirmed": ["pos", "exit"] },
-            { "id": "-", "name": "-", "mark": "-", "pos": null, "exit": null, "bms": false, "unconfirmed": ["pos", "exit"] }
+            { "id": "+", "name": "+", "mark": "+", "pos": null, "exit": null },
+            { "id": "-", "name": "-", "mark": "-", "pos": null, "exit": null }
+          ]
+        },
+        {
+          "id": "K1", "mark": "K1", "pitch": 5.0,
+          "accepts": { "min": 0.2, "max": 2.5 },
+          "twin": null,
+          "termination": "ferrule", "voltageClass": "MAINS", "source": "Invented",
+          "unconfirmed": ["accepts"],
+          "terminals": [
+            { "id": "C", "name": "Common", "mark": "C", "pos": null, "exit": null },
+            { "id": "NO", "name": "Normally open", "mark": "NO", "pos": null, "exit": null, "voltageClass": "ELV" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "DEMO-BUSBAR",
+      "name": "Demo busbar",
+      "partNumber": "DEMO-BB-4",
+      "defaultTag": null,
+      "envelope": { "l": 60, "w": 10, "h": 15 },
+      "mounting": "busbar",
+      "source": "Invented",
+      "connectors": [
+        {
+          "id": "-", "mark": "", "pitch": null,
+          "accepts": null,
+          "twin": { "allowed": true },
+          "termination": "ferrule", "voltageClass": "ELV",
+          "terminals": [
+            { "id": "1", "name": "Hole 1", "mark": "1", "hole": "outer", "pos": null, "exit": null },
+            { "id": "2", "name": "Hole 2", "mark": "2", "hole": "inner", "pos": null, "exit": null },
+            { "id": "3", "name": "Hole 3", "mark": "3", "hole": "inner", "pos": null, "exit": null },
+            { "id": "4", "name": "Hole 4", "mark": "4", "hole": "outer", "pos": null, "exit": null }
           ]
         }
       ]
