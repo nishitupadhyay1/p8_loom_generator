@@ -60,3 +60,15 @@ details.issues ul { font-size: 0.85rem; max-height: 20rem; overflow: auto; }
 details.comp { border-top: 1px solid var(--line); padding: 0.4rem 0; }
 details.comp summary { cursor: pointer; }
 .conn { margin-left: 1rem; }
+
+#library-details > summary { cursor: pointer; font-weight: 600; margin-bottom: 0.5rem; }
+.scroll { overflow-x: auto; }
+table.wires tbody tr { cursor: pointer; }
+table.wires tbody tr:hover { background: #f3f6fa; }
+table.wires tr.sel { background: #e3eefc; }
+.small { font-size: 0.75rem; }
+.editor { border: 1px solid var(--line); border-radius: 6px; padding: 0.5rem 1rem; margin-top: 1rem; background: #fbfcfd; }
+.editor th { width: 11rem; }
+.report { font-size: 0.9rem; }
+button.danger { color: var(--bad); }
+select, input[type=text] { font: inherit; font-size: 0.85rem; padding: 0.15rem 0.25rem; }

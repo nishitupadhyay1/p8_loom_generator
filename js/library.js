@@ -221,6 +221,28 @@ export function validateLibrary(lib) {
     });
   });
 
+  // --- Pack templates (optional): standard packs per variant, used for a new project.
+  if (lib.packTemplates !== undefined) {
+    if (!lib.packTemplates || typeof lib.packTemplates !== "object") err("packTemplates", "must be an object keyed by variant");
+    else for (const [variant, packs] of Object.entries(lib.packTemplates)) {
+      const vp = `packTemplates.${variant}`;
+      if (!Array.isArray(packs) || packs.length === 0) { err(vp, "must be a non-empty list"); continue; }
+      const ids = new Set();
+      let bases = 0;
+      packs.forEach((p, i) => {
+        const pp = `${vp}[${i}]`;
+        if (!isStr(p.id) || !p.id) { err(`${pp}.id`, "missing"); return; }
+        if (ids.has(p.id)) err(`${pp}.id`, `duplicate pack ${p.id}`);
+        ids.add(p.id);
+        if (!["base", "add-on"].includes(p.role)) err(`${pp}.role`, `must be "base" or "add-on"`);
+        if (p.role === "base") bases++;
+        const wr = p.wireRange;
+        if (!wr || !isStr(wr.prefix) || !Number.isInteger(wr.from) || !Number.isInteger(wr.to) || wr.from > wr.to) err(`${pp}.wireRange`, "needs prefix and whole numbers from ≤ to");
+      });
+      if (bases !== 1) err(vp, `needs exactly one base pack (has ${bases})`);
+    }
+  }
+
   const seen = new Set();
   const unconfirmedUnique = unconfirmed.filter((u) => !seen.has(u.path) && seen.add(u.path));
 
