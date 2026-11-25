@@ -2,6 +2,7 @@
 import { h, table } from "./dom.js";
 import * as P from "./project.js";
 import { runChecks, countIssues } from "./checks.js";
+import { routeWire, lengthUsed, anchorIds } from "./geometry.js";
 
 const opt = (value, label, selected) => h("option", { value, selected: selected ? true : null }, label ?? value);
 
@@ -28,10 +29,10 @@ function endText(prj, lib, ref) {
   return `${ref.tag}${conn} ${r.terminal.id}${name}`;
 }
 
-function lengthText(w) {
-  if (!w.measured) return "–";
-  if (w.measured.length === null) return h("span", { class: "muted" }, w.measured.source);
-  return `${w.measured.length} (${w.measured.source})`;
+function lengthText(prj, lib, w) {
+  const L = lengthUsed(prj, lib, w);
+  if (L.length === null) return h("span", { class: "muted" }, L.source || "–");
+  return h("span", {}, `${L.length} `, h("span", { class: "muted small" }, `(${L.source})`));
 }
 
 // --- Endpoint editor: tag -> connector -> terminal
@@ -64,7 +65,7 @@ export function renderProject(container, state, changed) {
     select(variants, newVariant, (v) => { newVariant = v; }),
     h("button", { type: "button", onclick: () => {
       if (prj && prj.wires.length && !window.confirm("Start a new project? The current one is not saved (saving comes in step 4).")) return;
-      state.project = P.newProject(lib, newVariant);
+      state.project = P.upgradeProject(P.newProject(lib, newVariant));
       state.importReport = null; state.selected = null;
       changed();
     } }, "Create"),
@@ -73,7 +74,9 @@ export function renderProject(container, state, changed) {
 
   if (prj.library?.rev !== lib.libraryRev) add(h("p", { class: "bad" }, `This project was made with library rev ${prj.library?.rev}; rev ${lib.libraryRev} is loaded.`));
 
-  add(h("p", {}, "Project name: ", input(prj.name, (v) => { prj.name = v; changed(); }, { size: 40 }), ` · Variant: ${prj.variant}`));
+  add(h("p", {}, "Project name: ", input(prj.name, (v) => { prj.name = v; changed(); }, { size: 32 }), ` · Variant: ${prj.variant}`,
+    " · Schedule author: ", input(prj.author?.name, (v) => { prj.author.name = v; changed(); }, { size: 18, placeholder: "name" }), " ",
+    input(prj.author?.title, (v) => { prj.author.title = v; changed(); }, { size: 26, placeholder: "title" })));
 
   // --- Packs
   if (!prj.packs.length) add(h("p", { class: "bad" }, `No packs: the library has no pack templates for ${prj.variant}. Load a library that has "packTemplates", then create the project again.`));
@@ -224,7 +227,7 @@ export function renderProject(container, state, changed) {
         h("td", {}, mark ? h("code", {}, mark) : h("span", { class: "bad" }, "–"),
           w.markingOverride ? h("span", { class: "unc", title: "Typed override" }, "override") : null,
           P.markingDiffers(prj, lib, w) ? h("div", { class: "bad small" }, `imported: ${w.importedMarking}`) : null),
-        h("td", {}, lengthText(w)));
+        h("td", {}, lengthText(prj, lib, w)));
     })));
   add(h("div", { class: "scroll" }, wireTable));
 
@@ -267,7 +270,18 @@ function wireEditor(prj, lib, w, state, changed) {
           w.measured = { length: n, source: w.measured?.source ?? "" }; changed();
         }, { size: 6 }), " source ",
         input(w.measured?.source ?? "", (v) => { w.measured = { length: w.measured?.length ?? null, source: v.trim() }; changed(); }, { size: 30, placeholder: "e.g. EL, Rev C" }))),
+      h("tr", {}, h("th", {}, "Anchors"), h("td", {},
+        input(Array.isArray(w.anchors) ? w.anchors.join(", ") : "", (v) => {
+          v = v.trim();
+          w.anchors = v === "" ? null : v === "-" ? [] : v.split(",").map((x) => x.trim()).filter(Boolean); changed();
+        }, { size: 40, placeholder: `blank = pack default (${(prj.packs.find((p) => p.id === w.pack)?.defaultAnchors ?? []).join(", ") || "none"}); - = none` }),
+        h("span", { class: "muted" }, ` In use: ${anchorIds(prj, w).join(" → ") || "none (direct)"}`))),
+      h("tr", {}, h("th", {}, "External length (mm)"), h("td", {},
+        "from end ", input(w.extLength?.from ?? "", (v) => { w.extLength = { ...(w.extLength ?? {}), from: v.trim() === "" ? null : Number(v) }; changed(); }, { size: 6 }),
+        " to end ", input(w.extLength?.to ?? "", (v) => { w.extLength = { ...(w.extLength ?? {}), to: v.trim() === "" ? null : Number(v) }; changed(); }, { size: 6 }),
+        h("span", { class: "muted" }, " Only for an end outside the enclosure (no position): length from the exit point to the device."))),
     )),
+    routeBox(prj, lib, w),
     h("div", { class: "actions" },
       h("button", { type: "button", onclick: () => { state.selected = null; changed(); } }, "Close"),
       h("button", { type: "button", class: "danger", onclick: () => {
@@ -291,4 +305,25 @@ function sizeRuleButton(prj, lib, packOf, changed) {
     for (const w of hit) w.type = type.id;
     changed();
   } }, `Apply ${def} mm² size rule to pack`);
+}
+
+// Length estimate breakdown for one wire.
+function routeBox(prj, lib, w) {
+  const r = routeWire(prj, lib, w);
+  if (!r.ok) return h("p", { class: "muted" }, `Length estimate: not available – ${r.reason}.`);
+  const f = (x) => x.toFixed(1);
+  const meas = w.measured?.length;
+  return h("div", { class: "route" },
+    h("h4", {}, `Length estimate: ${Math.round(r.length)} mm${r.approx ? " (approximate)" : ""}`,
+      typeof meas === "number" ? h("span", { class: "muted" }, ` · measured ${meas} mm (${w.measured.source || "measured"}), difference ${Math.round(r.length - meas)} mm (${((r.length - meas) / meas * 100).toFixed(1)} %)`) : null),
+    table(["Part", "mm"], [
+      [`Termination straights (${r.termination} mm each end)`, f(r.parts.termination)],
+      ["Straight runs between route points", f(r.parts.straights)],
+      ["Runs along duct", f(r.parts.runs)],
+      [`Bends (${r.bends.length}) as arcs`, f(r.parts.arcs)],
+      ["External (off-plate)", f(r.parts.external)],
+      [h("strong", {}, "Total"), h("strong", {}, f(r.length))]]),
+    r.bends.length ? table(["Bend at point", "Angle (°)", "Radius (mm)", "Type"], r.bends.map((b) => [b.i, (b.th * 180 / Math.PI).toFixed(0), b.r ?? "–", b.flex ? h("span", { class: "warn" }, "flexible (crosses hinge)") : "stationary"])) : null,
+    r.problems.length ? h("ul", {}, r.problems.map((p) => h("li", { class: "bad" }, p.msg))) : null,
+    h("p", { class: "muted small" }, `Hinge ${prj.hinge?.lengthsAt ?? "closed"} for lengths. Route points: ${r.points.map((q, i) => `${i} ${q.kind}${q.id ? " " + q.id : ""}`).join(" · ")}`));
 }

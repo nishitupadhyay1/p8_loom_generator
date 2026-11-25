@@ -21,9 +21,13 @@ export function newProject(lib, variant, name = "") {
     appVersion: APP_VERSION,
     library: { rev: lib.libraryRev, date: lib.date },
     name,
+    author: { name: "", title: "" },
     variant,
     packs: templates.map((p) => ({ ...structuredClone(p), rev: "" })),
+    plates: [],
+    hinge: { x: null, z: null, openAngle: 90, lengthsAt: "closed" },
     placements: [],
+    anchors: [],
     reservations: [],
     wires: [],
     exceptions: [],
@@ -181,7 +185,7 @@ export function importScheduleCsv(prj, lib, text, packId, sourceLabel) {
     const lenText = get("Length (mm)");
     let measured = null;
     if (/^\d+(\.\d+)?$/.test(lenText)) measured = { length: Number(lenText), source: sourceLabel };
-    else if (/^EL$/i.test(lenText)) measured = { length: null, source: "EL (to be measured by Electra-Loom)" };
+    else if (/^EL$/i.test(lenText)) measured = { length: null, source: "EL (to be measured)" };
     else if (lenText) report.problems.push(`${id}: length "${lenText}" not understood`);
 
     const wire = {
@@ -253,4 +257,26 @@ export function importReservationsCsv(prj, lib, text) {
 // Reservations whose terminal is not found in the library (after tags are mapped).
 export function unresolvedReservations(prj, lib) {
   return (prj.reservations ?? []).filter((r) => !isResolved(prj, lib, r));
+}
+
+// Fill fields added in later app versions so older project files keep working.
+export function upgradeProject(prj) {
+  prj.author ??= { name: "", title: "" };
+  prj.plates ??= [];
+  prj.hinge ??= { x: null, z: null, openAngle: 90, lengthsAt: "closed" };
+  prj.anchors ??= [];
+  prj.reservations ??= [];
+  prj.exceptions ??= [];
+  prj.revisions ??= [];
+  for (const p of prj.packs) p.defaultAnchors ??= [];
+  for (const w of prj.wires) { w.anchors ??= null; w.extLength ??= { from: null, to: null }; }
+  return prj;
+}
+
+export function checkProjectFile(obj) {
+  if (!obj || typeof obj !== "object") return "not a JSON object";
+  if (obj.schema !== PROJECT_SCHEMA) return `not a project file (schema should be "${PROJECT_SCHEMA}")`;
+  if (obj.schemaVersion !== PROJECT_SCHEMA_VERSION) return `schema version ${obj.schemaVersion} is not supported`;
+  for (const k of ["packs", "placements", "wires"]) if (!Array.isArray(obj[k])) return `"${k}" is missing`;
+  return null;
 }

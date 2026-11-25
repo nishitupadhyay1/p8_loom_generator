@@ -2,6 +2,7 @@
 // Bend radius and the 35 mm termination straight need geometry and come in step 7.
 import { resolveRef, generatedMarking, packOfNumber } from "./project.js";
 import { voltageClassOf } from "./library.js";
+import { routeWire } from "./geometry.js";
 
 export const LEVELS = ["error", "warning", "note"];
 
@@ -92,6 +93,15 @@ export function runChecks(prj, lib) {
         else if ((acc.min !== undefined && t.size < acc.min) || (acc.max !== undefined && t.size > acc.max))
           add("error", "ACCEPTS", `${w.id}:${endName}`, `${w.id}: ${t.size} mm² is outside ${label(ref, r)} range ${acc.min}–${acc.max} mm²`, { wire: w.id });
       }
+    }
+
+    // Route and length (step 7): bend radius and termination straight need geometry
+    const route = routeWire(prj, lib, w);
+    if (!route.ok) add("note", "LENGTH", w.id, `${w.id}: length not estimated – ${route.reason}`, { wire: w.id });
+    else {
+      // On approximate geometry (unconfirmed terminal position, exit or envelope) a bend problem is a note, not an error.
+      for (const p of route.problems) add(route.approx ? "note" : "error", p.code, `${w.id}:${p.msg}`, `${w.id}: ${p.msg}${route.approx ? " (approximate geometry)" : ""}`, { wire: w.id });
+      if (route.approx) add("note", "APPROX", w.id, `${w.id}: length is approximate – a terminal position, exit direction or envelope is unconfirmed`, { wire: w.id });
     }
 
     if (w.from?.tag && w.to?.tag && key(w.from) === key(w.to)) add("error", "SAME-END", w.id, `${w.id}: both ends are the same terminal`, { wire: w.id });
@@ -187,7 +197,7 @@ export function runChecks(prj, lib) {
 
   // Most serious first: accepted last, then level, then the check (size-rule last: one per wire, easy to bulk-fix).
   const order = { error: 0, warning: 1, note: 2 };
-  const codeOrder = ["END", "DUPLICATE", "SAME-END", "CAPACITY", "TWIN-SIZE", "TWIN", "CHAIN-SIZE", "RULE6-TWIN", "RESERVED", "RULE6",
+  const codeOrder = ["END", "BEND", "STRAIGHT", "BEND-RULE", "DUPLICATE", "SAME-END", "CAPACITY", "TWIN-SIZE", "TWIN", "CHAIN-SIZE", "RULE6-TWIN", "RESERVED", "RULE6",
     "VOLTAGE", "ACCEPTS", "RANGE", "PACK", "TYPE", "COLOUR", "MISSING", "MARKING", "DUP-LINK", "STOCK", "SIZE-RULE"];
   const ci = (c) => { const i = codeOrder.indexOf(c); return i < 0 ? 99 : i; };
   issues.sort((a, b) => (!!a.accepted - !!b.accepted) || order[a.level] - order[b.level] || ci(a.code) - ci(b.code)

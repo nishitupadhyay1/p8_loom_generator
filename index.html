@@ -10,12 +10,23 @@
   <header class="bar">
     <h1>P8 Loom Generator</h1>
     <span id="version" class="muted"></span>
-    <span id="step" class="muted"></span>
+    <nav>
+      <a href="#card-library">Library</a>
+      <a href="#card-project">Project</a>
+      <a href="#card-layout">Layout</a>
+      <a href="#card-3d">3D view</a>
+      <a href="#card-outputs">Outputs</a>
+    </nav>
+    <span class="filebar">
+      <button id="save-project" type="button">Save project…</button>
+      <label class="button">Open project…<input id="open-project" type="file" accept=".json,application/json" hidden></label>
+      <span id="autosave" class="muted small"></span>
+    </span>
     <span id="issue-counts"></span>
   </header>
 
   <main>
-    <section class="card">
+    <section class="card" id="card-library">
       <h2>Component library</h2>
       <p class="muted">Load the library JSON from the Dynaflow Drive. It is read in this browser only and never uploaded.</p>
       <div class="actions">
@@ -30,9 +41,35 @@
       </details>
     </section>
 
-    <section class="card">
+    <section class="card" id="card-project">
       <h2>Project</h2>
       <div id="project-view"></div>
+    </section>
+
+    <section class="card" id="card-layout">
+      <h2>Layout</h2>
+      <div id="layout-view"></div>
+    </section>
+
+    <section class="card" id="card-3d">
+      <h2>3D view</h2>
+      <div class="actions">
+        <span>Hinge view angle <input id="hinge-slider" type="range" min="0" max="90" value="0"> <span id="hinge-deg">0°</span></span>
+        <button type="button" data-view="fit">Fit</button>
+        <button type="button" data-view="front">Front</button>
+        <button type="button" data-view="top">Top</button>
+        <button type="button" data-view="side">Side</button>
+        <label><input id="sel-only" type="checkbox"> Selected wire only</label>
+        <button id="measure-btn" type="button">Measure</button>
+        <button id="clear-marks" type="button">Clear points</button>
+      </div>
+      <div id="view3d"></div>
+      <div id="pick-info" class="pickinfo muted">Drag to rotate, right-drag to pan, scroll to zoom. Select a wire in the wire list to highlight its route. The hinge slider moves the view only; lengths use the hinge setting in Layout.</div>
+    </section>
+
+    <section class="card" id="card-outputs">
+      <h2>Outputs</h2>
+      <div id="outputs-view"></div>
     </section>
   </main>
 
