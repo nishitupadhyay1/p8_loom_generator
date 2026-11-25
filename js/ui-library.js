@@ -36,7 +36,10 @@ export function renderLibrary(container, lib, result, fileName) {
   container.replaceChildren();
   const s = result.stats;
 
-  container.append(
+  // Node.append() prints null as the text "null", so drop empty parts first.
+  const add = (...parts) => container.append(...parts.flat().filter((x) => x !== null && x !== undefined && x !== false));
+
+  add(
     h("div", { class: "summary" },
       h("p", {}, h("strong", {}, fileName), lib?.libraryRev ? ` – rev ${lib.libraryRev}, ${lib.date}` : ""),
       lib?.note ? h("p", { class: "muted" }, lib.note) : null,
@@ -53,7 +56,7 @@ export function renderLibrary(container, lib, result, fileName) {
 
   // Rules
   const r = lib.rules;
-  container.append(
+  add(
     h("h3", {}, "Rules"),
     table(["Wire size", "Stationary bend (mm)", "Flexible bend (mm)"],
       r.bend.map((b, i) => [`${i === 0 ? "≤" : `> ${r.bend[i - 1].maxSize} to ≤`} ${b.maxSize} mm²`, b.stationary, b.flexible])),
@@ -64,7 +67,7 @@ export function renderLibrary(container, lib, result, fileName) {
   );
 
   // Colours and wire types
-  container.append(
+  add(
     h("h3", {}, "Colours"),
     table(["Code", "Name", "Screen"], lib.colours.map((c) => [c.code, c.name ?? "", c.screen ? h("span", { class: "swatch", style: `background:${c.screen}` }) : ""])),
     h("h3", {}, "Wire types"),
@@ -80,13 +83,13 @@ export function renderLibrary(container, lib, result, fileName) {
   );
 
   // Components
-  container.append(h("h3", {}, "Components"));
+  add(h("h3", {}, "Components"));
   for (const c of lib.components) {
     const env = c.envelope
       ? h("span", {}, val(c.envelope, "l"), " × ", val(c.envelope, "w"), " × ", val(c.envelope, "h"), " mm", isUnconfirmed(c, "envelope") && c.envelope.l !== null ? [" ", UNC()] : null)
       : UNC();
     const tag = c.defaultTag ?? "TAG";
-    container.append(
+    add(
       h("details", { class: "comp" },
         h("summary", {}, h("strong", {}, c.defaultTag ?? "(tag per placement)"), ` – ${c.name ?? ""} – ${c.partNumber ?? ""}`),
         h("p", {}, "Envelope L × W × H: ", env, ` · Mounting: ${c.mounting ?? "–"}`, c.source ? ` · Source: ${c.source}` : ""),
