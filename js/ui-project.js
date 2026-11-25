@@ -1,6 +1,7 @@
 // Project panel: new project, packs, tags, schedule import, wire list and wire editor.
 import { h, table } from "./dom.js";
 import * as P from "./project.js";
+import { runChecks, countIssues } from "./checks.js";
 
 const opt = (value, label, selected) => h("option", { value, selected: selected ? true : null }, label ?? value);
 
@@ -52,6 +53,7 @@ export function renderProject(container, state, changed) {
   container.replaceChildren();
   const add = (...parts) => container.append(...parts.flat().filter((x) => x !== null && x !== undefined && x !== false));
 
+  state.issueCounts = null;
   if (!lib) { add(h("p", { class: "muted" }, "Load a library first.")); return; }
 
   // --- New project
@@ -133,6 +135,61 @@ export function renderProject(container, state, changed) {
     ) : null,
   );
 
+  // --- Reserved points
+  const unresRes = P.unresolvedReservations(prj, lib);
+  add(h("h3", {}, `Reserved points (${prj.reservations?.length ?? 0})`),
+    h("p", { class: "muted" }, "Free and reserved points from the base schedule. Only the packs listed may land on a reserved point; a point with no pack stays empty in every loom (site, BMS, mains or spare)."),
+    h("div", { class: "actions" },
+      h("label", { class: "button" }, "Import reserved points CSV…",
+        h("input", { type: "file", accept: ".csv,text/csv", hidden: true, onchange: async (e) => {
+          const f = e.target.files?.[0];
+          if (!f) return;
+          state.resReport = { file: f.name, ...P.importReservationsCsv(prj, lib, await f.text()) };
+          e.target.value = "";
+          changed();
+        } }))),
+    state.resReport ? h("p", {}, `${state.resReport.file}: ${state.resReport.added.length} added, ${state.resReport.replaced.length} replaced, ${state.resReport.problems.length} problems.`,
+      state.resReport.problems.length ? h("ul", {}, state.resReport.problems.map((x) => h("li", { class: "bad" }, x))) : null) : null,
+    unresRes.length ? h("p", { class: "bad" }, `${unresRes.length} reserved point(s) not found in the library: ${unresRes.map((r) => `${r.tag} ${r.connector} ${r.terminal}`).join(", ")}`) : null,
+    prj.reservations?.length ? h("details", {}, h("summary", {}, "Show reserved points"),
+      table(["Point", "Packs allowed", "Reserved for", "Who connects", ""], prj.reservations.map((r, i) => [
+        `${r.tag}${r.connector === "-" ? "" : " " + r.connector} ${r.terminal}`, r.packs || h("em", {}, "none – stays empty"), r.reservedFor, r.who,
+        h("button", { type: "button", onclick: () => { prj.reservations.splice(i, 1); changed(); } }, "Remove")]))) : null,
+  );
+
+  // --- Issues
+  const issues = runChecks(prj, lib);
+  const n = countIssues(issues);
+  state.issueCounts = n;
+  state.issues = issues;
+  const filter = state.issueFilter ?? "open";
+  const shown = issues.filter((i) => filter === "all" || (filter === "open" && !i.accepted && i.level !== "note") || (filter === "notes" && i.level === "note" && !i.accepted) || (filter === "accepted" && i.accepted));
+  const byWire = new Map();
+  for (const i of issues) if (i.wire && !i.accepted && i.level !== "note") byWire.set(i.wire, (byWire.get(i.wire) ?? 0) + 1);
+  add(h("h3", {}, "Issues"),
+    h("p", {},
+      h("span", { class: n.error ? "bad" : "ok" }, `${n.error} errors`), " · ",
+      h("span", { class: n.warning ? "warn" : "ok" }, `${n.warning} warnings`), " · ",
+      h("span", { class: "muted" }, `${n.note} notes (not checked: values unconfirmed) · ${n.accepted} accepted`)),
+    h("div", { class: "actions" }, [["open", "Errors and warnings"], ["notes", "Notes"], ["accepted", "Accepted"], ["all", "All"]].map(([f, l]) =>
+      h("button", { type: "button", class: f === filter ? "on" : "", onclick: () => { state.issueFilter = f; changed(); } }, l))),
+    shown.length ? h("div", { class: "issue-list" }, table(["Level", "Check", "Issue", ""], shown.map((i) => [
+      h("span", { class: i.accepted ? "muted" : i.level === "error" ? "bad" : i.level === "warning" ? "warn" : "muted" }, i.accepted ? "accepted" : i.level),
+      i.code,
+      h("span", {}, i.msg, i.accepted ? h("div", { class: "muted small" }, `Accepted ${i.accepted.date}: ${i.accepted.reason}`) : null),
+      h("span", {},
+        i.wire ? h("button", { type: "button", onclick: () => { state.selected = i.wire; changed(); } }, "Show") : null, " ",
+        i.accepted
+          ? h("button", { type: "button", onclick: () => { prj.exceptions = prj.exceptions.filter((e) => e.id !== i.id); changed(); } }, "Un-accept")
+          : i.level !== "note" ? h("button", { type: "button", onclick: () => {
+              const reason = window.prompt(`Accept this ${i.level} as an exception?\n\n${i.msg}\n\nReason (required):`);
+              if (!reason || !reason.trim()) return;
+              prj.exceptions.push({ id: i.id, code: i.code, msg: i.msg, reason: reason.trim(), date: new Date().toISOString().slice(0, 10) });
+              changed();
+            } }, "Accept…") : null),
+    ]))) : h("p", { class: "ok" }, "Nothing to show."),
+  );
+
   // --- Wires
   const unresolved = prj.wires.filter((w) => !P.isResolved(prj, lib, w.from) || !P.isResolved(prj, lib, w.to));
   const differ = prj.wires.filter((w) => P.markingDiffers(prj, lib, w));
@@ -152,7 +209,8 @@ export function renderProject(container, state, changed) {
         P.sortWires(prj);
         state.selected = id;
         changed();
-      } }, "Add wire")),
+      } }, "Add wire"),
+      sizeRuleButton(prj, lib, () => addPack, changed)),
   );
 
   const wireTable = h("table", { class: "wires" },
@@ -160,7 +218,7 @@ export function renderProject(container, state, changed) {
     h("tbody", {}, prj.wires.map((w) => {
       const mark = P.markingOf(prj, lib, w);
       return h("tr", { class: w.id === state.selected ? "sel" : "", onclick: () => { state.selected = w.id; changed(); } },
-        h("td", {}, w.id), h("td", {}, w.pack),
+        h("td", {}, w.id, byWire.get(w.id) ? h("span", { class: "badge", title: "Open errors and warnings" }, byWire.get(w.id)) : null), h("td", {}, w.pack),
         h("td", {}, endText(prj, lib, w.from)), h("td", {}, endText(prj, lib, w.to)),
         h("td", {}, w.function), h("td", {}, w.type || "–"), h("td", {}, colourCell(lib, w.colour)),
         h("td", {}, mark ? h("code", {}, mark) : h("span", { class: "bad" }, "–"),
@@ -178,8 +236,10 @@ export function renderProject(container, state, changed) {
 function wireEditor(prj, lib, w, state, changed) {
   const msg = h("span", { class: "bad" });
   const gen = P.generatedMarking(prj, lib, w);
+  const mine = (state.issues ?? []).filter((i) => i.wire === w.id && !i.accepted);
   return h("div", { class: "editor" },
     h("h3", {}, `Edit ${w.id}`),
+    mine.length ? h("ul", {}, mine.map((i) => h("li", { class: i.level === "error" ? "bad" : i.level === "warning" ? "warn" : "muted" }, `${i.level}: ${i.msg}`))) : h("p", { class: "ok" }, "No issues on this wire."),
     h("table", {}, h("tbody", {},
       h("tr", {}, h("th", {}, "Wire number"), h("td", {}, input(w.id, (v) => {
         v = v.trim();
@@ -215,4 +275,20 @@ function wireEditor(prj, lib, w, state, changed) {
         prj.wires = prj.wires.filter((x) => x !== w); state.selected = null; changed();
       } }, "Delete wire")),
   );
+}
+
+// Bulk change: set every single-core wire in a pack to the variant's size rule (for moving Rev C to Rev D).
+function sizeRuleButton(prj, lib, packOf, changed) {
+  const def = lib.rules.sizeRule?.[prj.variant]?.default;
+  if (def === null || def === undefined) return null;
+  const type = lib.wireTypes.find((t) => (t.kind ?? "single") === "single" && t.size === def);
+  if (!type) return null;
+  return h("button", { type: "button", onclick: () => {
+    const pack = packOf();
+    const hit = prj.wires.filter((w) => w.pack === pack && w.type !== type.id && (lib.wireTypes.find((t) => t.id === w.type)?.kind ?? "single") === "single");
+    if (!hit.length) { window.alert(`All single-core wires in ${pack} are already ${def} mm².`); return; }
+    if (!window.confirm(`Change ${hit.length} single-core wire(s) in ${pack} to ${def} mm² (the ${prj.variant} size rule)?\n\n${hit.map((w) => w.id).join(", ")}\n\nCables (Cat) are not changed.`)) return;
+    for (const w of hit) w.type = type.id;
+    changed();
+  } }, `Apply ${def} mm² size rule to pack`);
 }

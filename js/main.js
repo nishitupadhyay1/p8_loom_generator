@@ -13,7 +13,13 @@ const state = { library: null, project: null, selected: null, importReport: null
 const libOut = document.getElementById("library-view");
 const prjOut = document.getElementById("project-view");
 
-const renderAll = () => renderProject(prjOut, state, renderAll);
+const counts = document.getElementById("issue-counts");
+function renderAll() {
+  renderProject(prjOut, state, renderAll);
+  const n = state.issueCounts;
+  counts.textContent = n ? `${n.error} errors · ${n.warning} warnings · ${n.note} notes · ${n.accepted} accepted` : "";
+  counts.className = n ? (n.error ? "bad" : n.warning ? "warn" : "ok") : "";
+}
 
 function loadLibrary(text, fileName) {
   let lib;

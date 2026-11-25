@@ -24,6 +24,7 @@ export function newProject(lib, variant, name = "") {
     variant,
     packs: templates.map((p) => ({ ...structuredClone(p), rev: "" })),
     placements: [],
+    reservations: [],
     wires: [],
     exceptions: [],
     revisions: [],
@@ -218,4 +219,38 @@ export function sortWires(prj) {
     const [pa, na] = key(a); const [pb, nb] = key(b);
     return pa === pb ? na - nb : pa.localeCompare(pb);
   });
+}
+
+// ----- Reserved points (Rev C "Free and Reserved Points"), one row per terminal
+export const RESERVATION_COLUMNS = ["Tag", "Connector", "Terminal", "Packs", "Reserved for", "Who connects"];
+
+export function importReservationsCsv(prj, lib, text) {
+  const rows = parseCsv(text);
+  const report = { added: [], replaced: [], problems: [] };
+  if (!rows.length) { report.problems.push("The file is empty."); return report; }
+  const header = rows[0].map(norm);
+  const col = Object.fromEntries(RESERVATION_COLUMNS.map((c) => [c, header.indexOf(c)]));
+  const missing = RESERVATION_COLUMNS.filter((c) => col[c] < 0);
+  if (missing.length) { report.problems.push(`Missing columns: ${missing.join(", ")}.`); return report; }
+  prj.reservations ??= [];
+  const packIds = new Set(prj.packs.map((p) => p.id));
+  for (const r of rows.slice(1)) {
+    const get = (c) => norm(r[col[c]]);
+    const res = { tag: get("Tag"), connector: get("Connector"), terminal: get("Terminal"), packs: get("Packs"),
+      reservedFor: get("Reserved for"), who: get("Who connects") };
+    if (!res.tag) continue;
+    const name = `${res.tag} ${res.connector === "-" ? "" : res.connector + " "}${res.terminal}`;
+    ensurePlacement(prj, lib, res.tag);
+    for (const p of res.packs.split(";").map((s) => s.trim()).filter(Boolean)) {
+      if (!packIds.has(p)) report.problems.push(`${name}: pack "${p}" is not in the project`);
+    }
+    const i = prj.reservations.findIndex((x) => x.tag === res.tag && x.connector === res.connector && x.terminal === res.terminal);
+    if (i >= 0) { prj.reservations[i] = res; report.replaced.push(name); } else { prj.reservations.push(res); report.added.push(name); }
+  }
+  return report;
+}
+
+// Reservations whose terminal is not found in the library (after tags are mapped).
+export function unresolvedReservations(prj, lib) {
+  return (prj.reservations ?? []).filter((r) => !isResolved(prj, lib, r));
 }

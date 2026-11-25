@@ -72,3 +72,8 @@ table.wires tr.sel { background: #e3eefc; }
 .report { font-size: 0.9rem; }
 button.danger { color: var(--bad); }
 select, input[type=text] { font: inherit; font-size: 0.85rem; padding: 0.15rem 0.25rem; }
+.warn { color: var(--warn); }
+button.on { background: #d6e4f7; border-color: #9bb8e0; font-weight: 600; }
+.badge { display: inline-block; margin-left: 0.3rem; min-width: 1.2rem; padding: 0 0.3rem; border-radius: 0.6rem; background: var(--bad); color: #fff; font-size: 0.7rem; text-align: center; }
+.issue-list { max-height: 24rem; overflow: auto; }
+#issue-counts { margin-left: auto; font-weight: 600; font-size: 0.9rem; }

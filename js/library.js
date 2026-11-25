@@ -127,6 +127,9 @@ export function validateLibrary(lib) {
     if (r?.blockedColours?.includes(c.code)) err(`${p}.code`, `${c.code} is a blocked colour (earth bonding) and cannot be in the colour list`);
     if (!isStr(c.name)) warn(`${p}.name`, "missing");
   });
+  for (const [i, c] of (Array.isArray(lib.colours) ? lib.colours : []).entries()) {
+    if (c.stockAs !== undefined && !colourCodes.has(c.stockAs)) err(`colours[${i}].stockAs`, `${c.stockAs} is not in the colour list`);
+  }
 
   // --- Wire types
   const wireIds = new Set();
