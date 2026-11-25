@@ -1,0 +1,12 @@
+# Public repository: never commit Dynaflow data.
+# Only the dummy files in samples/ may be committed.
+*.json
+!samples/sample-library.json
+!samples/sample-project.json
+*.csv
+*.xlsx
+*.dxf
+*.dwg
+*.pdf
+data/
+private/

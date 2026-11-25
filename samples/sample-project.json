@@ -1,0 +1,35 @@
+{
+  "schema": "p8-loom-project",
+  "schemaVersion": 1,
+  "note": "DUMMY DATA ONLY. Invented project for testing the app.",
+  "appVersion": "0.0.1",
+  "library": { "rev": "DEMO-A" },
+  "variant": "DEMO",
+  "plates": [
+    { "id": "BP", "name": "Backplate", "w": 400, "h": 300 },
+    { "id": "HP", "name": "Hinge plate", "w": 400, "h": 300 }
+  ],
+  "hinge": null,
+  "placements": [
+    { "tag": "PSU", "component": "DEMO-PSU-1", "plate": "BP", "x": 50, "y": 50, "rot": 0 },
+    { "tag": "CTL", "component": "DEMO-CTL-1", "plate": "HP", "x": 50, "y": 50, "rot": 0 }
+  ],
+  "anchors": [],
+  "packs": [
+    { "id": "BASE", "role": "base", "drawing": "DEMO-LOOM-BASE", "rev": "A", "wireRange": { "prefix": "W", "from": 1, "to": 99 } }
+  ],
+  "reservations": [],
+  "wires": [
+    {
+      "id": "W01", "pack": "BASE", "dwg": "Main",
+      "from": { "tag": "PSU", "connector": "X1", "terminal": "1" },
+      "to": { "tag": "CTL", "connector": "CN1", "terminal": "+" },
+      "function": "Demo supply +", "size": 0.5, "colour": "RD",
+      "anchors": [], "measured": null
+    }
+  ],
+  "exceptions": [],
+  "revisions": [
+    { "rev": "A", "date": "2026-11-25", "note": "Dummy sample" }
+  ]
+}
